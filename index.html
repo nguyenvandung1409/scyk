@@ -8,14 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 10px; }
         .input-field { background: #334155; border: 1px solid #475569; color: white; border-radius: 6px; padding: 8px; width: 100%; }
         .loading { opacity: 0.5; pointer-events: none; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-2 md:p-3">
 
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-700 pb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 border-b border-slate-700 pb-3">
         <div>
             <h1 class="text-2xl font-bold text-blue-400">Hệ thống quản lý sự cố y khoa</h1>
             <p class="text-1xl font-bold text-green-400">Bệnh viện Y học cổ truyền Quảng Nam</p>
@@ -36,7 +36,7 @@
             <h2 class="text-xl font-semibold mb-4 text-blue-300">GỬI BÁO CÁO</h2>
             <form id="incident-form" class="space-y-4">
                 <div>
-                    <label class="block text-xs uppercase text-slate-500 mb-1">Khoa/Phòng</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Khoa/Phòng</label>
                     <select id="dept" class="input-field">
                         <option>Khoa KB&XN-CĐHA</option>
                         <option>Khoa Nội</option>
@@ -47,11 +47,11 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase text-slate-500 mb-1">Mô tả sự cố</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Mô tả sự cố</label>
                     <textarea id="desc" required class="input-field h-24" placeholder="Nêu rõ diễn biến..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase text-slate-500 mb-1">Mức độ nguy cơ</label>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Mức độ nguy cơ</label>
                     <select id="level" class="input-field">
                         <option value="NC0">NC0 - Chưa xảy ra</option>
                         <option value="NC1" class="text-green-400">NC1 - Nhẹ</option>
@@ -64,23 +64,23 @@
         </div>
 
         <!-- DASHBOARD -->
-        <div class="lg:col-span-3 space-y-6">
+        <div class="lg:col-span-3 space-y-4">
             <!-- Thống kê nhanh -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="card bg-blue-500/10 border-blue-500/30">
-                    <p class="text-slate-400 text-xs">TỔNG SỰ CỐ</p>
+                    <p class="text-slate-300 text-xs font-semibold">TỔNG SỰ CỐ</p>
                     <p id="stat-total" class="text-3xl font-bold text-blue-400">0</p>
                 </div>
                 <div class="card bg-red-500/10 border-red-500/30">
-                    <p class="text-slate-400 text-xs">NGHIÊM TRỌNG (NC3)</p>
+                    <p class="text-slate-300 text-xs font-semibold">NGHIÊM TRỌNG (NC3)</p>
                     <p id="stat-nc3" class="text-3xl font-bold text-red-500">0</p>
                 </div>
                 <div class="card bg-yellow-500/10 border-yellow-500/30">
-                    <p class="text-slate-400 text-xs">ĐANG XỬ LÝ</p>
+                    <p class="text-slate-300 text-xs font-semibold">ĐANG XỬ LÝ</p>
                     <p id="stat-pending" class="text-3xl font-bold text-yellow-500">0</p>
                 </div>
                 <div class="card bg-green-500/10 border-green-500/30">
-                    <p class="text-slate-400 text-xs">TỶ LỆ AN TOÀN</p>
+                    <p class="text-slate-300 text-xs font-semibold">TỶ LỆ AN TOÀN</p>
                     <p id="stat-safe" class="text-3xl font-bold text-green-500">0%</p>
                 </div>
             </div>
@@ -88,11 +88,11 @@
             <!-- Charts -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="card">
-                    <h3 class="text-sm font-semibold mb-4 text-slate-400 uppercase">Phân loại theo mức độ</h3>
+                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase">Phân loại theo mức độ</h3>
                     <canvas id="pieChart" height="200"></canvas>
                 </div>
                 <div class="card">
-                    <h3 class="text-sm font-semibold mb-4 text-slate-400 uppercase">Sự cố theo khoa phòng</h3>
+                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase">Sự cố theo khoa phòng</h3>
                     <canvas id="barChart" height="200"></canvas>
                 </div>
             </div>
