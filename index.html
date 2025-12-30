@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý sự cố y khoa</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; }
         .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 10px; }
         .input-field { background: #334155; border: 1px solid #475569; color: white; border-radius: 6px; padding: 8px; width: 100%; }
-        .loading { opacity: 0.5; pointer-events: none; }
+        .chart-container { position: relative; height: 220px; width: 100%; }
+        /* Tùy chỉnh thanh cuộn cho bảng */
+        .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
     </style>
 </head>
 <body class="p-2 md:p-3">
@@ -21,7 +24,7 @@
             <p class="text-1xl font-bold text-green-400">Bệnh viện Y học cổ truyền Quảng Nam</p>
         </div>
         <div class="flex items-center gap-4">
-            <button onclick="fetchData()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">🔄 Làm mới dữ liệu</button>
+            <button onclick="app.fetchData()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">🔄 Làm mới dữ liệu</button>
             <div class="text-right">
                 <p id="current-time" class="text-sm font-mono"></p>
                 <span class="text-xs text-green-400">● Đang kết nối</span>
@@ -33,7 +36,7 @@
         
         <!-- FORM NHẬP -->
         <div class="card lg:col-span-1 h-fit">
-            <h2 class="text-xl font-semibold mb-4 text-blue-300">GỬI BÁO CÁO</h2>
+            <h2 class="text-xl font-semibold mb-4 text-blue-300">GỬI BÁO CÁO MỚI</h2>
             <form id="incident-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Khoa báo cáo</label>
@@ -43,40 +46,40 @@
                         <option>Khoa Ngoại</option>
                         <option>Khoa Lão</option>
                         <option>Khoa Châm cứu</option>
-			<option>Khoa PHCN</option>
+                        <option>Khoa PHCN</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Mô tả sự cố</label>
-                    <textarea id="desc" required class="input-field h-24" placeholder="Nêu rõ diễn biến..."></textarea>
+                    <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Mô tả sự cố (ngắn gọn)</label>
+                    <textarea id="desc" required class="input-field h-12" placeholder="Nêu rõ diễn biến..."></textarea>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Mức độ nguy cơ</label>
                     <select id="level" class="input-field">
                         <option value="NC0">NC0 - Chưa xảy ra</option>
-                        <option value="NC1" class="text-green-400">NC1 - Nhẹ</option>
-                        <option value="NC2" class="text-yellow-400">NC2 - Trung bình</option>
-                        <option value="NC3" class="text-red-400">NC3 - Nặng/Tử vong</option>
+                        <option value="NC1">NC1 - Nhẹ</option>
+                        <option value="NC2">NC2 - Trung bình</option>
+                        <option value="NC3">NC3 - Nặng/Tử vong</option>
                     </select>
                 </div>
-                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow-lg">GỬI</button>
+                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold shadow-lg">GỬI BÁO CÁO</button>
             </form>
         </div>
 
         <!-- DASHBOARD -->
         <div class="lg:col-span-3 space-y-4">
-            <!-- Thống kê nhanh -->
+            <!-- Thống kê -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="card bg-blue-500/10 border-blue-500/30">
-                    <p class="text-slate-300 text-xs font-semibold">TỔNG SỰ CỐ</p>
+                    <p class="text-slate-300 text-xs font-semibold">TỔNG SỰ CỐ ĐÃ GHI NHẬN</p>
                     <p id="stat-total" class="text-3xl font-bold text-blue-400">0</p>
                 </div>
                 <div class="card bg-red-500/10 border-red-500/30">
-                    <p class="text-slate-300 text-xs font-semibold">NGHIÊM TRỌNG (NC3)</p>
+                    <p class="text-slate-300 text-xs font-semibold">SỰ CỐ NGHIÊM TRỌNG (NC3)</p>
                     <p id="stat-nc3" class="text-3xl font-bold text-red-500">0</p>
                 </div>
                 <div class="card bg-yellow-500/10 border-yellow-500/30">
-                    <p class="text-slate-300 text-xs font-semibold">ĐANG XỬ LÝ</p>
+                    <p class="text-slate-300 text-xs font-semibold">ĐÃ BÁO CÁO</p>
                     <p id="stat-pending" class="text-3xl font-bold text-yellow-500">0</p>
                 </div>
                 <div class="card bg-green-500/10 border-green-500/30">
@@ -88,35 +91,40 @@
             <!-- Charts -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="card">
-                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase">Phân loại theo mức độ</h3>
-                    <canvas id="pieChart" height="200"></canvas>
+                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase text-center">Phân loại theo mức độ nguy cơ</h3>
+                    <div class="chart-container">
+                        <canvas id="pieChart"></canvas>
+                    </div>
                 </div>
                 <div class="card">
-                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase">Phân loại theo khoa</h3>
-                    <canvas id="barChart" height="200"></canvas>
+                    <h3 class="text-sm font-semibold mb-2 text-slate-400 uppercase text-center">Phân loại sự cố theo khoa</h3>
+                    <div class="chart-container">
+                        <canvas id="barChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- List -->
-            <div class="card overflow-hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-semibold">Nhật ký báo cáo sự cố y khoa gần đây</h2>
-                    <input type="text" id="searchInput" placeholder="Tìm kiếm..." class="input-field w-1/3 text-sm">
+            <!-- SEARCH & LIST -->
+            <div class="card">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                    <h2 class="text-lg font-semibold text-slate-300">Nhật ký báo cáo gần đây</h2>
+                    <!-- Ô Tìm kiếm -->
+                    <input type="text" id="searchInput" 
+                           placeholder="Gõ để tìm: tên khoa, nội dung hoặc mức độ (NC3...)" 
+                           class="input-field md:w-1/2 border-blue-500/50 focus:border-blue-400">
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto custom-scroll max-h-[400px]">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-800 text-slate-400">
+                        <thead class="bg-slate-800 text-slate-400 sticky top-0">
                             <tr>
                                 <th class="p-3">Thời gian</th>
                                 <th class="p-3">Khoa</th>
-                                <th class="p-3">Mô tả</th>
+                                <th class="p-3">Mô tả sự cố</th>
                                 <th class="p-3">Mức độ</th>
                                 <th class="p-3">Trạng thái</th>
                             </tr>
                         </thead>
-                        <tbody id="table-body">
-                            <!-- Dữ liệu từ App Script sẽ vào đây -->
-                        </tbody>
+                        <tbody id="table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -124,122 +132,160 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3Oinz5SlYG33cEXZJjGkpUt5pnRwxyNCj4x5z0bH-1odjvyKZRhiK7bMRQvFPKklE8w/exec"; // <-- DÁN URL VÀO ĐÂY
-        let rawData = [];
-        let barChart, pieChart;
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQ76wQcF0Q1yVpX9JSaHhBmlqzxuO6QsI-D4alBPI-2_5lqcfkFYAlhAnngIbB1kwOjw/exec";
+        
+        const app = {
+            allData: [],
+            barChart: null,
+            pieChart: null,
 
-        // Đồng hồ
-        setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleString('vi-VN'); }, 1000);
+            init: function() {
+                setInterval(() => { 
+                    document.getElementById('current-time').innerText = new Date().toLocaleString('vi-VN'); 
+                }, 1000);
 
-        // Gửi dữ liệu
-        document.getElementById('incident-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btnSubmit');
-            btn.innerText = "ĐANG GỬI...";
-            btn.disabled = true;
+                this.fetchData();
+                setInterval(() => this.fetchData(), 30000); // Tự động làm mới mỗi 30s
 
-            const payload = {
-                dept: document.getElementById('dept').value,
-                desc: document.getElementById('desc').value,
-                level: document.getElementById('level').value
-            };
+                // Gắn sự kiện tìm kiếm trực tiếp
+                document.getElementById('searchInput').oninput = (e) => {
+                    this.renderAll(e.target.value);
+                };
 
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
+                document.getElementById('incident-form').onsubmit = (e) => this.handleSubmit(e);
+            },
+
+            fetchData: async function() {
+                try {
+                    const response = await fetch(SCRIPT_URL);
+                    const data = await response.json();
+                    // Chuẩn hóa dữ liệu ngay khi nhận để thanh tìm kiếm dễ làm việc
+                    this.allData = data.map(item => ({
+                        time: item.timestamp || "",
+                        dept: item.department || item.khoa || "",
+                        desc: item.description || item.mô_tả || "",
+                        level: item.level || "NC0",
+                        status: item.status || "Mới"
+                    }));
+                    this.renderAll(document.getElementById('searchInput').value);
+                } catch (error) {
+                    console.error("Lỗi tải dữ liệu");
+                }
+            },
+
+            handleSubmit: async function(e) {
+                e.preventDefault();
+                const btn = document.getElementById('btnSubmit');
+                btn.innerText = "ĐANG GỬI...";
+                btn.disabled = true;
+
+                const payload = {
+                    dept: document.getElementById('dept').value,
+                    desc: document.getElementById('desc').value,
+                    level: document.getElementById('level').value
+                };
+
+                try {
+                    await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                    alert("Báo cáo thành công!");
+                    document.getElementById('incident-form').reset();
+                    await this.fetchData();
+                } catch (error) {
+                    alert("Lỗi kết nối database!");
+                } finally {
+                    btn.innerText = "GỬI BÁO CÁO";
+                    btn.disabled = false;
+                }
+            },
+
+            renderAll: function(filterText = "") {
+                const search = filterText.toLowerCase().trim();
+                
+                // Lọc dữ liệu chính xác
+                const filtered = this.allData.filter(item => {
+                    return item.dept.toLowerCase().includes(search) || 
+                           item.desc.toLowerCase().includes(search) || 
+                           item.level.toLowerCase().includes(search);
                 });
-                alert("Báo cáo thành công!");
-                document.getElementById('incident-form').reset();
-                fetchData();
-            } catch (error) {
-                console.error(error);
-                alert("Lỗi kết nối database!");
-            } finally {
-                btn.innerText = "GỬI BÁO CÁO";
-                btn.disabled = false;
+
+                // Cập nhật Thống kê
+                const total = filtered.length;
+                const nc3 = filtered.filter(d => d.level === 'NC3').length;
+                const pending = filtered.filter(d => d.status === 'Mới').length;
+                
+                document.getElementById('stat-total').innerText = total;
+                document.getElementById('stat-nc3').innerText = nc3;
+                document.getElementById('stat-pending').innerText = pending;
+                document.getElementById('stat-safe').innerText = total > 0 ? Math.round(((total-nc3)/total)*100) + '%' : '100%';
+
+                // Cập nhật Bảng (Sắp xếp mới nhất lên đầu)
+                const tableBody = document.getElementById('table-body');
+                if (filtered.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-500 italic">Không tìm thấy dữ liệu phù hợp</td></tr>`;
+                } else {
+                    tableBody.innerHTML = filtered.slice().reverse().map(item => `
+                        <tr class="border-b border-slate-700 hover:bg-slate-800/50 transition">
+                            <td class="p-3 text-[10px] text-slate-400">${item.time ? new Date(item.time).toLocaleString('vi-VN') : ''}</td>
+                            <td class="p-3 font-semibold text-xs text-blue-300">${item.dept}</td>
+                            <td class="p-3 text-slate-300 text-xs">${item.desc}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.level === 'NC3' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">
+                                    ${item.level}
+                                </span>
+                            </td>
+                            <td class="p-3"><span class="text-[10px] italic text-yellow-500">${item.status}</span></td>
+                        </tr>
+                    `).join('');
+                }
+
+                this.updateCharts(filtered);
+            },
+
+            updateCharts: function(data) {
+                const depts = {};
+                const levels = { 'NC0': 0, 'NC1': 0, 'NC2': 0, 'NC3': 0 };
+                
+                data.forEach(d => {
+                    depts[d.dept] = (depts[d.dept] || 0) + 1;
+                    if (levels.hasOwnProperty(d.level)) levels[d.level]++;
+                });
+
+                if (this.barChart) this.barChart.destroy();
+                if (this.pieChart) this.pieChart.destroy();
+
+                const commonOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 10 } } } }
+                };
+
+                this.barChart = new Chart(document.getElementById('barChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(depts),
+                        datasets: [{ label: 'Số vụ', data: Object.values(depts), backgroundColor: '#3b82f6' }]
+                    },
+                    options: { ...commonOptions, plugins: { legend: { display: false } }, 
+                        scales: { y: { beginAtZero: true, grid: { color: '#334155' } } } 
+                    }
+                });
+
+                this.pieChart = new Chart(document.getElementById('pieChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(levels),
+                        datasets: [{
+                            data: Object.values(levels),
+                            backgroundColor: ['#64748b', '#22c55e', '#fbbf24', '#f87171'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: { ...commonOptions, plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+                });
             }
         };
 
-        // Lấy dữ liệu
-        async function fetchData() {
-            try {
-                const response = await fetch(SCRIPT_URL);
-                rawData = await response.json();
-                updateDashboard();
-            } catch (error) {
-                console.error("Không thể lấy dữ liệu");
-            }
-        }
-
-        function updateDashboard() {
-            // 1. Cập nhật con số
-            const total = rawData.length;
-            const nc3 = rawData.filter(d => d.level === 'NC3').length;
-            const pending = rawData.filter(d => d.status === 'Mới').length;
-            
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-nc3').innerText = nc3;
-            document.getElementById('stat-pending').innerText = pending;
-            document.getElementById('stat-safe').innerText = total > 0 ? Math.round(((total-nc3)/total)*100) + '%' : '100%';
-
-            // 2. Cập nhật Bảng
-            const tableBody = document.getElementById('table-body');
-            tableBody.innerHTML = rawData.map(item => `
-                <tr class="border-b border-slate-700 hover:bg-slate-800/50">
-                    <td class="p-3 text-xs text-slate-400">${new Date(item.timestamp).toLocaleString('vi-VN')}</td>
-                    <td class="p-3 font-semibold">${item.department}</td>
-                    <td class="p-3 text-slate-300">${item.description}</td>
-                    <td class="p-3">
-                        <span class="px-2 py-1 rounded text-xs font-bold ${item.level === 'NC3' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">
-                            ${item.level}
-                        </span>
-                    </td>
-                    <td class="p-3"><span class="text-xs italic text-yellow-500">${item.status}</span></td>
-                </tr>
-            `).reverse().join('');
-
-            // 3. Cập nhật Biểu đồ
-            updateCharts();
-        }
-
-        function updateCharts() {
-            const depts = {};
-            const levels = { 'NC0': 0, 'NC1': 0, 'NC2': 0, 'NC3': 0 };
-            
-            rawData.forEach(d => {
-                depts[d.department] = (depts[d.department] || 0) + 1;
-                levels[d.level] = (levels[d.level] || 0) + 1;
-            });
-
-            if (barChart) barChart.destroy();
-            if (pieChart) pieChart.destroy();
-
-            const ctxBar = document.getElementById('barChart').getContext('2d');
-            barChart = new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(depts),
-                    datasets: [{ label: 'Sự cố', data: Object.values(depts), backgroundColor: '#3b82f6' }]
-                },
-                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-            });
-
-            const ctxPie = document.getElementById('pieChart').getContext('2d');
-            pieChart = new Chart(ctxPie, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(levels),
-                    datasets: [{
-                        data: Object.values(levels),
-                        backgroundColor: ['#94a3b8', '#4ade80', '#fbbf24', '#f87171']
-                    }]
-                }
-            });
-        }
-
-        // Tải dữ liệu lần đầu
-        fetchData();
+        window.onload = () => app.init();
     </script>
 </body>
 </html>
