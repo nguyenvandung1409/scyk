@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý sự cố y khoa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f1f5f9; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+        .input-field { background: #334155; border: 1px solid #475569; color: white; border-radius: 6px; padding: 8px; width: 100%; }
+        .loading { opacity: 0.5; pointer-events: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-slate-700 pb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-400">Hệ thống quản lý sự cố y khoa</h1>
+            <p class="text-1xl font-bold text-green-400">Bệnh viện Y học cổ truyền Quảng Nam</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="fetchData()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded text-sm transition">🔄 Làm mới dữ liệu</button>
+            <div class="text-right">
+                <p id="current-time" class="text-sm font-mono"></p>
+                <span class="text-xs text-green-400">● Đang kết nối</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- FORM NHẬP -->
+        <div class="card lg:col-span-1 h-fit">
+            <h2 class="text-xl font-semibold mb-4 text-blue-300">GỬI BÁO CÁO</h2>
+            <form id="incident-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase text-slate-500 mb-1">Khoa/Phòng</label>
+                    <select id="dept" class="input-field">
+                        <option>Khoa KB&XN-CĐHA</option>
+                        <option>Khoa Nội</option>
+                        <option>Khoa Ngoại</option>
+                        <option>Khoa Lão</option>
+                        <option>Khoa Châm cứu</option>
+			<option>Khoa PHCN</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-slate-500 mb-1">Mô tả sự cố</label>
+                    <textarea id="desc" required class="input-field h-24" placeholder="Nêu rõ diễn biến..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs uppercase text-slate-500 mb-1">Mức độ nguy cơ</label>
+                    <select id="level" class="input-field">
+                        <option value="NC0">NC0 - Chưa xảy ra</option>
+                        <option value="NC1" class="text-green-400">NC1 - Nhẹ</option>
+                        <option value="NC2" class="text-yellow-400">NC2 - Trung bình</option>
+                        <option value="NC3" class="text-red-400">NC3 - Nặng/Tử vong</option>
+                    </select>
+                </div>
+                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow-lg">GỬI</button>
+            </form>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div class="lg:col-span-3 space-y-6">
+            <!-- Thống kê nhanh -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="card bg-blue-500/10 border-blue-500/30">
+                    <p class="text-slate-400 text-xs">TỔNG SỰ CỐ</p>
+                    <p id="stat-total" class="text-3xl font-bold text-blue-400">0</p>
+                </div>
+                <div class="card bg-red-500/10 border-red-500/30">
+                    <p class="text-slate-400 text-xs">NGHIÊM TRỌNG (NC3)</p>
+                    <p id="stat-nc3" class="text-3xl font-bold text-red-500">0</p>
+                </div>
+                <div class="card bg-yellow-500/10 border-yellow-500/30">
+                    <p class="text-slate-400 text-xs">ĐANG XỬ LÝ</p>
+                    <p id="stat-pending" class="text-3xl font-bold text-yellow-500">0</p>
+                </div>
+                <div class="card bg-green-500/10 border-green-500/30">
+                    <p class="text-slate-400 text-xs">TỶ LỆ AN TOÀN</p>
+                    <p id="stat-safe" class="text-3xl font-bold text-green-500">0%</p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                    <h3 class="text-sm font-semibold mb-4 text-slate-400 uppercase">Phân loại theo mức độ</h3>
+                    <canvas id="pieChart" height="200"></canvas>
+                </div>
+                <div class="card">
+                    <h3 class="text-sm font-semibold mb-4 text-slate-400 uppercase">Sự cố theo khoa phòng</h3>
+                    <canvas id="barChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div class="card overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Nhật ký sự cố gần đây</h2>
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm..." class="input-field w-1/3 text-sm">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-slate-400">
+                            <tr>
+                                <th class="p-3">Thời gian</th>
+                                <th class="p-3">Khoa</th>
+                                <th class="p-3">Mô tả</th>
+                                <th class="p-3">Mức độ</th>
+                                <th class="p-3">Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Dữ liệu từ App Script sẽ vào đây -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxRMKTDr8cMzQ57YYYDkRoaCl3jZe5IL9YXoMdOd0DW4Bqk1DU5KhQXE-M4ZEsvf0aRjw/exec"; // <-- DÁN URL VÀO ĐÂY
+        let rawData = [];
+        let barChart, pieChart;
+
+        // Đồng hồ
+        setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleString('vi-VN'); }, 1000);
+
+        // Gửi dữ liệu
+        document.getElementById('incident-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            btn.innerText = "ĐANG GỬI...";
+            btn.disabled = true;
+
+            const payload = {
+                dept: document.getElementById('dept').value,
+                desc: document.getElementById('desc').value,
+                level: document.getElementById('level').value
+            };
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                alert("Báo cáo thành công!");
+                document.getElementById('incident-form').reset();
+                fetchData();
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi kết nối database!");
+            } finally {
+                btn.innerText = "GỬI BÁO CÁO";
+                btn.disabled = false;
+            }
+        };
+
+        // Lấy dữ liệu
+        async function fetchData() {
+            try {
+                const response = await fetch(SCRIPT_URL);
+                rawData = await response.json();
+                updateDashboard();
+            } catch (error) {
+                console.error("Không thể lấy dữ liệu");
+            }
+        }
+
+        function updateDashboard() {
+            // 1. Cập nhật con số
+            const total = rawData.length;
+            const nc3 = rawData.filter(d => d.level === 'NC3').length;
+            const pending = rawData.filter(d => d.status === 'Mới').length;
+            
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-nc3').innerText = nc3;
+            document.getElementById('stat-pending').innerText = pending;
+            document.getElementById('stat-safe').innerText = total > 0 ? Math.round(((total-nc3)/total)*100) + '%' : '100%';
+
+            // 2. Cập nhật Bảng
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = rawData.map(item => `
+                <tr class="border-b border-slate-700 hover:bg-slate-800/50">
+                    <td class="p-3 text-xs text-slate-400">${new Date(item.timestamp).toLocaleString('vi-VN')}</td>
+                    <td class="p-3 font-semibold">${item.department}</td>
+                    <td class="p-3 text-slate-300">${item.description}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${item.level === 'NC3' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}">
+                            ${item.level}
+                        </span>
+                    </td>
+                    <td class="p-3"><span class="text-xs italic text-yellow-500">${item.status}</span></td>
+                </tr>
+            `).reverse().join('');
+
+            // 3. Cập nhật Biểu đồ
+            updateCharts();
+        }
+
+        function updateCharts() {
+            const depts = {};
+            const levels = { 'NC0': 0, 'NC1': 0, 'NC2': 0, 'NC3': 0 };
+            
+            rawData.forEach(d => {
+                depts[d.department] = (depts[d.department] || 0) + 1;
+                levels[d.level] = (levels[d.level] || 0) + 1;
+            });
+
+            if (barChart) barChart.destroy();
+            if (pieChart) pieChart.destroy();
+
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(depts),
+                    datasets: [{ label: 'Sự cố', data: Object.values(depts), backgroundColor: '#3b82f6' }]
+                },
+                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            pieChart = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(levels),
+                    datasets: [{
+                        data: Object.values(levels),
+                        backgroundColor: ['#94a3b8', '#4ade80', '#fbbf24', '#f87171']
+                    }]
+                }
+            });
+        }
+
+        // Tải dữ liệu lần đầu
+        fetchData();
+    </script>
+</body>
+</html>
